@@ -8,10 +8,13 @@ Advanced AI-powered brain tumor detection and segmentation system using YOLO+SAM
 - **Multi-Model Pipeline**: Combines classification, detection, and segmentation
 - **Interactive Web Interface**: Built with Streamlit for easy use
 - **High Accuracy**: 99.3% classification accuracy with advanced segmentation
+- **Cloud-Ready**: One-click model downloads for Streamlit Cloud deployment
 
 ## 🚀 Live Demo
 
 **[Try the live app on Streamlit Cloud](https://braintumor-detector.streamlit.app)**
+
+*Note: First-time users will need to download AI models using the sidebar button for full functionality.*
 
 ## 🔧 Technologies
 
@@ -20,6 +23,7 @@ Advanced AI-powered brain tumor detection and segmentation system using YOLO+SAM
 - **Segmentation**: SAM2 for precise boundary detection
 - **Frontend**: Streamlit web interface
 - **Backend**: PyTorch, OpenCV, PIL
+- **Model Distribution**: Cloud storage integration
 
 ## 📁 Project Structure
 
@@ -56,7 +60,9 @@ Due to GitHub's file size limitations, model files are not included in this repo
 
 ### For Streamlit Cloud:
 
-The app includes graceful error handling for missing models and will show a demo interface.
+The app includes an integrated model downloader! Users can click "Download AI Models" in the sidebar to automatically download all required models.
+
+**For developers**: See [CLOUD_SETUP.md](CLOUD_SETUP.md) for instructions on configuring cloud storage URLs.
 
 ## 🚀 Quick Start
 
