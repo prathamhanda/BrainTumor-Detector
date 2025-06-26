@@ -95,7 +95,7 @@ def download_models():
         
         # For Dropbox (use direct download link):
         # Change ?dl=0 to ?dl=1 at the end of Dropbox links
-        "yolo_best.pt": "https://drive.com/uc?export=download&id=1XQOhHPKZeHmRDAvuTG9b0WZl1UF7TsIT", 
+        "yolo_best.pt": "https://drive.google.com/uc?export=download&id=1XQOhHPKZeHmRDAvuTG9b0WZl1UF7TsIT", 
         
         # For AWS S3 or other direct HTTP links:
         "sam2_b.pt": "https://drive.google.com/uc?export=download&id=1LRYFaCuRnB9bN8832-kglTiozVPjQxie"

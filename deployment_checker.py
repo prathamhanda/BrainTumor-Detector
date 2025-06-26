@@ -96,14 +96,23 @@ def check_download_urls():
         with open('download_models.py', 'r', encoding='utf-8') as f:
             content = f.read()
         
+        # Check for placeholder URLs
         if "YOUR_" in content:
             print("⚠️ Placeholder URLs found in download_models.py")
             print("📋 Action required: Update model URLs in download_models.py")
             print("📖 See CLOUD_SETUP.md for instructions")
             return False
-        else:
-            print("✅ Download URLs configured")
+        
+        # Check for actual URLs (Google Drive, Dropbox, etc.)
+        if ("drive.google.com" in content or 
+            "dropbox.com" in content or 
+            "huggingface.co" in content or
+            "amazonaws.com" in content):
+            print("✅ Download URLs configured with cloud storage")
             return True
+        else:
+            print("⚠️ No recognizable cloud storage URLs found")
+            return False
             
     except Exception as e:
         print(f"❌ Download URL check failed: {e}")
