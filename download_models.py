@@ -21,33 +21,21 @@ import os
 import requests
 import streamlit as st
 from pathlib import Path
-import gdown  # For Google Drive downloads
-
-def download_from_google_drive(file_id, output_path, description="file"):
-    """Download file from Google Drive using gdown"""
-    try:
-        st.info(f"📥 Downloading {description} from Google Drive...")
-        gdown.download(id=file_id, output=str(output_path), quiet=False)
-        return True
-    except Exception as e:
-        st.error(f"Error downloading {description} from Google Drive: {e}")
-        return False
 
 def download_file(url, local_path, description="file"):
     """Download a file from URL with progress bar"""
     try:
-        # Handle Google Drive URLs
+        # Convert Google Drive sharing URLs to direct download
         if "drive.google.com" in url:
-            if "uc?export=download&id=" in url:
-                file_id = url.split("id=")[1]
-            elif "/file/d/" in url:
+            if "/file/d/" in url and "/view" in url:
                 file_id = url.split("/file/d/")[1].split("/")[0]
-            else:
+                url = f"https://drive.google.com/uc?export=download&id={file_id}"
+            elif "uc?export=download&id=" not in url:
                 st.error(f"Invalid Google Drive URL format for {description}")
                 return False
-            return download_from_google_drive(file_id, local_path, description)
         
-        # Regular HTTP download with progress bar
+        # Download with progress bar
+        st.info(f"📥 Downloading {description}...")
         response = requests.get(url, stream=True)
         response.raise_for_status()
         
@@ -56,6 +44,7 @@ def download_file(url, local_path, description="file"):
         with open(local_path, 'wb') as file:
             if total_size == 0:
                 file.write(response.content)
+                st.success(f"✅ Downloaded {description}")
                 return True
             
             downloaded_size = 0
@@ -72,6 +61,7 @@ def download_file(url, local_path, description="file"):
             
             progress_bar.empty()
             status_text.empty()
+            st.success(f"✅ Downloaded {description}")
             return True
             
     except Exception as e:
