@@ -91,14 +91,14 @@ def download_models():
         # For Google Drive (convert sharing link to direct download):
         # From: https://drive.google.com/file/d/1ABC123XYZ/view?usp=sharing  
         # To: https://drive.google.com/uc?export=download&id=1ABC123XYZ
-        "model_38": "YOUR_GOOGLE_DRIVE_LINK_FOR_MODEL_38",
+        "model_38": "https://drive.google.com/uc?export=download&id=1-dTNFBQ9z1qMBI3MPwFsAiRB52n4OTqO",
         
         # For Dropbox (use direct download link):
         # Change ?dl=0 to ?dl=1 at the end of Dropbox links
-        "yolo_best.pt": "YOUR_DROPBOX_LINK_FOR_YOLO_MODEL", 
+        "yolo_best.pt": "https://drive.com/uc?export=download&id=1XQOhHPKZeHmRDAvuTG9b0WZl1UF7TsIT", 
         
         # For AWS S3 or other direct HTTP links:
-        "sam2_b.pt": "YOUR_DIRECT_HTTP_LINK_FOR_SAM_MODEL"
+        "sam2_b.pt": "https://drive.google.com/uc?export=download&id=1LRYFaCuRnB9bN8832-kglTiozVPjQxie"
     }
     
     # Check if URLs are still placeholder values
