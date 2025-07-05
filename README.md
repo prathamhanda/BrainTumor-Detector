@@ -11,7 +11,7 @@
 <p align="center">
     <a href="https://brtumor.streamlit.app"><img src="https://static.streamlit.io/badges/streamlit_badge_black_white.svg" alt="Streamlit App"></a>
     <a href="https://github.com/prathamhanda/BrainTumor-Detector/blob/master/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
-    <a href="https://github.com/prathamhanda/BrainTumor-Detector/edit/master/README.md#-model-performance"><img src="https://img.shields.io/badge/Classification_Accuracy-99.3%25-brightgreen" alt="Classification Accuracy"></a>
+    <a href="hhttps://github.com/prathamhanda/BrainTumor-Detector?tab=readme-ov-file#-model-performance"><img src="https://img.shields.io/badge/Classification_Accuracy-99.3%25-brightgreen" alt="Classification Accuracy"></a>
 </p>
 
 This project introduces a cutting-edge, AI-driven tool that goes beyond simple tumor classification. Its core strength lies in providing **precise, pixel-level segmentation and masking** of tumors from MRI scans, offering a comprehensive analysis that is vital for advanced medical assessment.
