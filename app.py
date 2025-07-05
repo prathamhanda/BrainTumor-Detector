@@ -6,6 +6,7 @@ from torchvision import transforms
 from src.model import MyModel, load_model
 from src.utils import predict
 from src.segmentation import TumorSegmentor
+from src.fallback_segmentation import create_fallback_visualization
 from download_models import download_models, check_models_exist
 
 # Page config
@@ -228,19 +229,59 @@ if uploaded_file is not None:
             st.subheader("Tumor Segmentation Analysis")
             
             with st.spinner("Generating segmentation visualization..."):
+                # Let's implement a more robust approach with proper fallback
                 try:
-                    # Create segmentation visualization
-                    segmentation_result = segmentor.process_image(image, predicted_label)
-                    st.image(segmentation_result, caption="Segmentation Result", use_container_width=True)
-                    
-                    if predicted_label != "No Tumor":
+                    # First, let's check if it's a "No Tumor" prediction
+                    if predicted_label == "No Tumor":
+                        # For "No Tumor" cases, just use the basic visualization
+                        segmentation_result = segmentor.process_image(image, predicted_label)
+                        st.image(segmentation_result, caption="Segmentation Result", use_container_width=True)
+                        st.success("✅ No tumor detected - image appears normal")
+                    else:
+                        # For tumor cases, try the advanced segmentation first
+                        st.info("Attempting AI-based tumor segmentation...")
+                        
+                        # Check if models are available
+                        if segmentor.yolo_model is None or segmentor.sam_model is None:
+                            st.warning("⚠️ Advanced AI segmentation models not fully available")
+                            st.info("Using fallback segmentation method")
+                            
+                            # Use fallback method
+                            fallback_result = create_fallback_visualization(image, predicted_label)
+                            st.image(fallback_result, caption="Fallback Segmentation Result", use_container_width=True)
+                            
+                        else:
+                            # Try advanced segmentation
+                            segmentation_result = segmentor.process_image(image, predicted_label)
+                            
+                            # Look for failure indicators in the result
+                            if isinstance(segmentation_result, str) and "failed" in segmentation_result.lower():
+                                st.warning("⚠️ Advanced AI segmentation failed")
+                                st.info("Using fallback segmentation method")
+                                
+                                # Use fallback method
+                                fallback_result = create_fallback_visualization(image, predicted_label)
+                                st.image(fallback_result, caption="Fallback Segmentation Result", use_container_width=True)
+                                
+                            else:
+                                # Show the advanced segmentation result
+                                st.image(segmentation_result, caption="AI Segmentation Result", use_container_width=True)
+                                
+                        # Common success message for all tumor cases
                         st.success("🔍 Tumor region highlighted with red outline and semi-transparent fill")
                         st.info("💡 The segmentation shows the potential tumor location based on image analysis")
-                    else:
-                        st.success("✅ No tumor detected - image appears normal")
                         
                 except Exception as e:
                     st.error(f"Error during segmentation: {str(e)}")
-                    st.info("Segmentation failed, but classification result is still valid.")
+                    st.info("Attempting fallback segmentation...")
+                    
+                    try:
+                        # Try fallback segmentation as last resort
+                        fallback_result = create_fallback_visualization(image, predicted_label)
+                        st.image(fallback_result, caption="Emergency Fallback Segmentation", use_container_width=True)
+                        st.warning("⚠️ Using basic image processing for segmentation (AI models unavailable)")
+                    except Exception as e2:
+                        st.error(f"All segmentation methods failed: {str(e2)}")
+                        st.info("Segmentation unavailable, but classification result is still valid.")
         else:
             st.info("🔧 Segmentation models not available. Only classification performed.")

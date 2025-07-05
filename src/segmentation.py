@@ -10,9 +10,25 @@ try:
     from ultralytics import YOLO, SAM
     ULTRALYTICS_AVAILABLE = True
     print("✅ Ultralytics YOLO and SAM loaded successfully")
-except ImportError:
-    print("❌ Ultralytics not available. Please install with: pip install ultralytics")
+except Exception as e:
+    import traceback
+    print(f"❌ Ultralytics import error: {str(e)}")
+    print(f"Detailed error: {traceback.format_exc()}")
+    print("❌ Attempting alternative import methods...")
     ULTRALYTICS_AVAILABLE = False
+    
+    # Try to install ultralytics if not available
+    try:
+        import sys
+        import subprocess
+        print("Installing ultralytics via pip...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "ultralytics==8.1.31"])
+        from ultralytics import YOLO, SAM
+        ULTRALYTICS_AVAILABLE = True
+        print("✅ Ultralytics installed and loaded successfully")
+    except Exception as e2:
+        print(f"❌ Ultralytics installation failed: {str(e2)}")
+        ULTRALYTICS_AVAILABLE = False
 
 class TumorSegmentor:
     def __init__(self, yolo_model_path=None, sam_model_path=None, device="cpu"):
@@ -31,21 +47,35 @@ class TumorSegmentor:
             # Load YOLO model for tumor detection
             if yolo_model_path and os.path.exists(yolo_model_path):
                 print(f"🔧 Loading YOLO model from: {yolo_model_path}")
-                self.yolo_model = YOLO(yolo_model_path)
-                print("✅ YOLO model loaded successfully!")
+                try:
+                    self.yolo_model = YOLO(yolo_model_path)
+                    print("✅ YOLO model loaded successfully!")
+                except Exception as yolo_err:
+                    print(f"❌ YOLO model loading failed: {str(yolo_err)}")
+                    import traceback
+                    print(f"Detailed YOLO error: {traceback.format_exc()}")
+                    self.yolo_model = None
             else:
                 print(f"⚠️ YOLO model not found at: {yolo_model_path}")
             
             # Load SAM model for segmentation
             if sam_model_path and os.path.exists(sam_model_path):
                 print(f"🔧 Loading SAM model from: {sam_model_path}")
-                self.sam_model = SAM(sam_model_path)
-                print("✅ SAM model loaded successfully!")
+                try:
+                    self.sam_model = SAM(sam_model_path)
+                    print("✅ SAM model loaded successfully!")
+                except Exception as sam_err:
+                    print(f"❌ SAM model loading failed: {str(sam_err)}")
+                    import traceback
+                    print(f"Detailed SAM error: {traceback.format_exc()}")
+                    self.sam_model = None
             else:
                 print(f"⚠️ SAM model not found at: {sam_model_path}")
                 
         except Exception as e:
             print(f"❌ Error loading models: {e}")
+            import traceback
+            print(f"Detailed model loading error: {traceback.format_exc()}")
             print("🔄 Models will use fallback segmentation method")
             self.yolo_model = None
             self.sam_model = None
@@ -124,27 +154,36 @@ class TumorSegmentor:
         if predicted_class == "No Tumor":
             return None
         
-        # Try YOLO+SAM pipeline first
-        if self.yolo_model is not None and self.sam_model is not None:
-            # Step 1: Detect with YOLO
-            detection_result = self.detect_tumor_with_yolo(image)
+        # Check if models are available
+        if self.yolo_model is None:
+            print("❌ YOLO model not available for segmentation")
+            return "FAILED: YOLO model not available"
             
-            if detection_result is not None:
-                bbox, confidence = detection_result
-                
-                # Step 2: Segment with SAM
-                mask = self.segment_with_sam(image, bbox)
-                
-                if mask is not None:
-                    return mask
-                else:
-                    print("🔄 SAM segmentation failed, no mask generated")
-            else:
-                print("🔄 YOLO detection failed, no tumor detected")
+        if self.sam_model is None:
+            print("❌ SAM model not available for segmentation")
+            return "FAILED: SAM model not available"
         
-        # If YOLO+SAM fails, return None (no segmentation)
-        print("⚠️ YOLO+SAM2 segmentation not available or failed")
-        return None
+        # Try YOLO+SAM pipeline 
+        # Step 1: Detect with YOLO
+        detection_result = self.detect_tumor_with_yolo(image)
+        
+        if detection_result is not None:
+            bbox, confidence = detection_result
+            
+            # Step 2: Segment with SAM
+            mask = self.segment_with_sam(image, bbox)
+            
+            if mask is not None:
+                return mask
+            else:
+                print("🔄 SAM segmentation failed, no mask generated")
+                return "FAILED: SAM segmentation generated no mask"
+        else:
+            print("🔄 YOLO detection failed, no tumor detected")
+            return "FAILED: YOLO detection found no tumor regions"
+    
+        # This line should never be reached but is kept for safety
+        return "FAILED: Unknown segmentation error"
     
     def create_segmented_visualization(self, original_image, mask, predicted_class, confidence=None):
         """
@@ -164,8 +203,16 @@ class TumorSegmentor:
         # Segmented image
         ax2.imshow(img_array)
         
-        # Create red overlay for tumor region
-        if mask is not None and np.any(mask > 0):
+        # Handle different mask scenarios
+        if isinstance(mask, str) and mask.startswith("FAILED:"):
+            # This is a failure message, display it
+            failure_reason = mask.split("FAILED:")[1].strip()
+            ax2.text(0.5, 0.5, f"Segmentation not available\n({failure_reason})", 
+                    transform=ax2.transAxes, fontsize=12, 
+                    color='orange', ha='center', va='center', weight='bold',
+                    bbox=dict(boxstyle="round,pad=0.5", facecolor="white", alpha=0.8))
+        elif mask is not None and not isinstance(mask, str) and np.any(mask > 0):
+            # We have a valid mask with content
             # Find contours for outline
             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             
@@ -224,6 +271,11 @@ class TumorSegmentor:
         
         # Perform segmentation
         mask = self.segment_tumor(image, predicted_class)
+        
+        # Check if segmentation failed (mask will be a string starting with "FAILED:")
+        if isinstance(mask, str) and mask.startswith("FAILED:"):
+            print(f"Segmentation failed: {mask}")
+            # We'll pass the failure message to the visualization function
         
         # Create visualization
         result_image = self.create_segmented_visualization(

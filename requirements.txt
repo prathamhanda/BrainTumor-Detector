@@ -18,8 +18,8 @@ matplotlib==3.9.2
 pandas==2.2.2
 
 # AI/ML Models
-ultralytics  # YOLO models - latest version
-git+https://github.com/facebookresearch/segment-anything-2.git  # SAM2 models
+ultralytics==8.1.31  # YOLO models - pinned version for stability
+git+https://github.com/facebookresearch/segment-anything-2.git@main  # SAM2 models
 
 # Web and Download
 requests==2.32.2
