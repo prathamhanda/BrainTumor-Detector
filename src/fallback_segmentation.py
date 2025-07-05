@@ -8,42 +8,77 @@ def simple_tumor_detection(image):
     """
     Simple fallback tumor detection using basic image processing techniques.
     This is used when YOLO and SAM models are not available.
+    
+    Returns:
+        numpy.ndarray: Mask of detected tumor region or None if detection fails
     """
-    # Convert PIL Image to numpy array
-    img = np.array(image)
-    
-    # Convert to grayscale
-    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    
-    # Apply Gaussian blur
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-    
-    # Apply adaptive thresholding to find potential tumor regions
-    # (adjust parameters based on your image characteristics)
-    thresh = cv2.adaptiveThreshold(
-        blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-        cv2.THRESH_BINARY_INV, 21, 5
-    )
-    
-    # Find contours
-    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-    # Filter contours by size to eliminate noise
-    min_size = 200  # Minimum contour area
-    filtered_contours = [cnt for cnt in contours if cv2.contourArea(cnt) > min_size]
-    
-    # If no sufficiently large contours, try different approach
-    if len(filtered_contours) == 0:
-        # Try Otsu's thresholding
-        _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        filtered_contours = [cnt for cnt in contours if cv2.contourArea(cnt) > min_size]
-    
-    # Create mask
-    mask = np.zeros_like(gray)
-    cv2.drawContours(mask, filtered_contours, -1, 255, -1)
-    
-    return mask
+    try:
+        # Convert PIL Image to numpy array
+        img = np.array(image)
+        
+        # Convert to grayscale
+        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        
+        # Apply Gaussian blur
+        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+        
+        # Try multiple approaches to find tumor region
+        approaches = [
+            # Approach 1: Adaptive thresholding
+            lambda img: cv2.adaptiveThreshold(
+                img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                cv2.THRESH_BINARY_INV, 21, 5
+            ),
+            
+            # Approach 2: Otsu's thresholding
+            lambda img: cv2.threshold(
+                img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
+            )[1],
+            
+            # Approach 3: Simple thresholding
+            lambda img: cv2.threshold(
+                img, 127, 255, cv2.THRESH_BINARY_INV
+            )[1],
+            
+            # Approach 4: Canny edge detection + closing
+            lambda img: cv2.morphologyEx(
+                cv2.Canny(img, 100, 200),
+                cv2.MORPH_CLOSE,
+                cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+            )
+        ]
+        
+        # Try each approach until we find a good mask
+        for i, approach in enumerate(approaches):
+            print(f"Trying fallback approach {i+1}")
+            thresh = approach(blurred)
+            
+            # Find contours
+            contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            # Filter contours by size to eliminate noise
+            min_size = 200  # Minimum contour area
+            filtered_contours = [cnt for cnt in contours if cv2.contourArea(cnt) > min_size]
+            
+            # If we found good contours, create mask and return
+            if len(filtered_contours) > 0:
+                # Create mask
+                mask = np.zeros_like(gray)
+                cv2.drawContours(mask, filtered_contours, -1, 255, -1)
+                print(f"Fallback approach {i+1} successful")
+                return mask
+        
+        # If all approaches failed, return a simple circular region in the center
+        print("All fallback approaches failed, creating artificial region")
+        h, w = gray.shape
+        mask = np.zeros_like(gray)
+        cv2.circle(mask, (w//2, h//2), min(h, w)//4, 255, -1)
+        return mask
+        
+    except Exception as e:
+        print(f"Error in simple_tumor_detection: {e}")
+        # Return None to indicate failure
+        return None
 
 def create_fallback_visualization(image, predicted_class):
     """

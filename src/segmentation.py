@@ -5,24 +5,42 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import io
 import os
+import sys
+import traceback
+import shutil
 
+# Try to import our custom model loader
+try:
+    from src.model_loader import load_yolo_model, load_sam_model
+    MODEL_LOADER_AVAILABLE = True
+    print("✅ Custom model loader imported successfully")
+except ImportError:
+    print("⚠️ Could not import custom model loader, trying direct path...")
+    try:
+        # Try with different relative import path
+        sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from model_loader import load_yolo_model, load_sam_model
+        MODEL_LOADER_AVAILABLE = True
+        print("✅ Custom model loader imported via alternate path")
+    except ImportError as e:
+        print(f"❌ Custom model loader import failed: {e}")
+        MODEL_LOADER_AVAILABLE = False
+
+# Try to import ultralytics
 try:
     from ultralytics import YOLO, SAM
     ULTRALYTICS_AVAILABLE = True
     print("✅ Ultralytics YOLO and SAM loaded successfully")
 except Exception as e:
-    import traceback
     print(f"❌ Ultralytics import error: {str(e)}")
     print(f"Detailed error: {traceback.format_exc()}")
-    print("❌ Attempting alternative import methods...")
     ULTRALYTICS_AVAILABLE = False
     
     # Try to install ultralytics if not available
     try:
-        import sys
         import subprocess
         print("Installing ultralytics via pip...")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "ultralytics==8.1.31"])
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "ultralytics==8.0.208"])
         from ultralytics import YOLO, SAM
         ULTRALYTICS_AVAILABLE = True
         print("✅ Ultralytics installed and loaded successfully")
@@ -47,33 +65,82 @@ class TumorSegmentor:
             # Load YOLO model for tumor detection
             if yolo_model_path and os.path.exists(yolo_model_path):
                 print(f"🔧 Loading YOLO model from: {yolo_model_path}")
-                try:
-                    self.yolo_model = YOLO(yolo_model_path)
-                    print("✅ YOLO model loaded successfully!")
-                except Exception as yolo_err:
-                    print(f"❌ YOLO model loading failed: {str(yolo_err)}")
-                    import traceback
-                    print(f"Detailed YOLO error: {traceback.format_exc()}")
-                    self.yolo_model = None
+                
+                # Use custom model loader if available
+                if MODEL_LOADER_AVAILABLE:
+                    print("Using custom model loader for YOLO")
+                    self.yolo_model = load_yolo_model(yolo_model_path)
+                    if self.yolo_model:
+                        print("✅ YOLO model loaded successfully with custom loader!")
+                    else:
+                        print("❌ Custom YOLO model loading failed")
+                else:
+                    # Fallback to direct loading if custom loader not available
+                    try:
+                        # First apply PyTorch 2.6+ fix for weights_only
+                        if hasattr(torch, 'serialization') and hasattr(torch.serialization, 'add_safe_globals'):
+                            try:
+                                # Import the necessary classes
+                                from ultralytics.nn.tasks import DetectionModel
+                                # Add them to the safe globals list
+                                torch.serialization.add_safe_globals([DetectionModel])
+                                print("✅ Added DetectionModel to PyTorch safe globals")
+                            except Exception as e:
+                                print(f"⚠️ Could not add to safe globals: {e}")
+                                
+                        # Try to load with standard approach first
+                        self.yolo_model = YOLO(yolo_model_path)
+                        print("✅ YOLO model loaded with standard approach!")
+                    except Exception as e:
+                        print(f"❌ Standard YOLO loading failed: {e}")
+                        self.yolo_model = None
             else:
                 print(f"⚠️ YOLO model not found at: {yolo_model_path}")
+                self.yolo_model = None
             
             # Load SAM model for segmentation
             if sam_model_path and os.path.exists(sam_model_path):
                 print(f"🔧 Loading SAM model from: {sam_model_path}")
-                try:
-                    self.sam_model = SAM(sam_model_path)
-                    print("✅ SAM model loaded successfully!")
-                except Exception as sam_err:
-                    print(f"❌ SAM model loading failed: {str(sam_err)}")
-                    import traceback
-                    print(f"Detailed SAM error: {traceback.format_exc()}")
-                    self.sam_model = None
+                
+                # Use custom model loader if available
+                if MODEL_LOADER_AVAILABLE:
+                    print("Using custom model loader for SAM")
+                    self.sam_model = load_sam_model(sam_model_path)
+                    if self.sam_model:
+                        print("✅ SAM model loaded successfully with custom loader!")
+                    else:
+                        print("❌ Custom SAM model loading failed")
+                else:
+                    # Handle SAM2 model loading with direct approach
+                    if "sam2" in os.path.basename(sam_model_path).lower():
+                        # Create a renamed copy with standard name
+                        standard_sam_path = os.path.join(os.path.dirname(sam_model_path), "sam_b.pt")
+                        try:
+                            # Only copy if target doesn't exist
+                            if not os.path.exists(standard_sam_path):
+                                shutil.copy2(sam_model_path, standard_sam_path)
+                                print(f"✅ Created compatible copy at {standard_sam_path}")
+                            
+                            # Try loading the renamed model
+                            self.sam_model = SAM(standard_sam_path)
+                            print("✅ SAM model loaded from renamed copy!")
+                        except Exception as e:
+                            print(f"❌ SAM rename failed: {e}")
+                            self.sam_model = None
+                    else:
+                        # Standard SAM model loading
+                        try:
+                            self.sam_model = SAM(sam_model_path)
+                            print("✅ SAM model loaded with standard approach!")
+                        except Exception as e:
+                            print(f"❌ Standard SAM loading failed: {e}")
+                            self.sam_model = None
             else:
                 print(f"⚠️ SAM model not found at: {sam_model_path}")
+                self.sam_model = None
                 
         except Exception as e:
-            print(f"❌ Error loading models: {e}")
+            print(f"❌ Error in model loading process: {e}")
             import traceback
             print(f"Detailed model loading error: {traceback.format_exc()}")
             print("🔄 Models will use fallback segmentation method")

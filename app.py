@@ -2,6 +2,8 @@ import os
 import streamlit as st
 from PIL import Image
 import torch
+# Apply PyTorch fix for model loading
+from src.pytorch_fix import allow_model_loading
 from torchvision import transforms
 from src.model import MyModel, load_model
 from src.utils import predict
@@ -101,9 +103,28 @@ if models_available or st.session_state.models_downloaded:
             break
 
     try:
+        # First make sure PyTorch is properly set up for model loading
+        from src.pytorch_fix import allow_model_loading
+        allow_model_loading()
+        
+        # Now try to create the tumor segmentor
         segmentor = TumorSegmentor(yolo_model_path=yolo_model_path, sam_model_path=sam_model_path, device=device)
+        
+        # Log the status of the segmentor
+        if segmentor and segmentor.yolo_model and segmentor.sam_model:
+            print("✅ Both YOLO and SAM models loaded successfully")
+        elif segmentor and segmentor.yolo_model:
+            print("⚠️ Only YOLO model loaded successfully, SAM failed")
+        elif segmentor and segmentor.sam_model:
+            print("⚠️ Only SAM model loaded successfully, YOLO failed")
+        else:
+            print("❌ Neither YOLO nor SAM models loaded successfully")
+            
     except Exception as e:
-        st.warning(f"Segmentation models not available: {e}")
+        import traceback
+        st.warning(f"Segmentation models not available: {str(e)}")
+        print(f"Error initializing segmentation models: {e}")
+        print(f"Error details: {traceback.format_exc()}")
         segmentor = None
 
 # Define the transformation
@@ -283,5 +304,38 @@ if uploaded_file is not None:
                     except Exception as e2:
                         st.error(f"All segmentation methods failed: {str(e2)}")
                         st.info("Segmentation unavailable, but classification result is still valid.")
+                        
+                        # Emergency fallback - just show a split view with original image
+                        try:
+                            import matplotlib.pyplot as plt
+                            import numpy as np
+                            import io
+                            from PIL import Image
+                            
+                            # Create a very simple visualization with just the original image
+                            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+                            img_array = np.array(image)
+                            ax1.imshow(img_array)
+                            ax1.set_title("Original Image")
+                            ax1.axis('off')
+                            
+                            ax2.imshow(img_array)
+                            ax2.set_title(f"No Segmentation Available - {predicted_label}")
+                            ax2.text(0.5, 0.5, "Segmentation failed\nShowing original image", 
+                                    transform=ax2.transAxes, fontsize=12, 
+                                    color='red', ha='center', va='center',
+                                    bbox=dict(boxstyle="round,pad=0.5", facecolor="white", alpha=0.8))
+                            ax2.axis('off')
+                            
+                            plt.tight_layout()
+                            buf = io.BytesIO()
+                            plt.savefig(buf, format='png', bbox_inches='tight', dpi=150)
+                            buf.seek(0)
+                            plt.close()
+                            
+                            emergency_image = Image.open(buf)
+                            st.image(emergency_image, caption="Original Image Only (All Segmentation Failed)", use_container_width=True)
+                        except Exception as final_err:
+                            st.error("Failed to create even a basic image display.")
         else:
             st.info("🔧 Segmentation models not available. Only classification performed.")
