@@ -12,7 +12,7 @@ Advanced AI-powered brain tumor detection and segmentation system using YOLO+SAM
 
 ## 🚀 Live Demo
 
-**[Try the live app on Streamlit Cloud](https://braintumor-detector.streamlit.app)**
+**[Try the live app on Streamlit Cloud](https://brtumor.streamlit.app)**
 
 *Note: First-time users will need to download AI models using the sidebar button for full functionality.*
 

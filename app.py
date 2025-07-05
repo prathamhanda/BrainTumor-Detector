@@ -183,7 +183,7 @@ cols = st.columns(num_cols)
 for i, (sample_image_file, sample_image) in enumerate(sample_images):
     col_idx = i % num_cols
     with cols[col_idx]:
-        st.image(sample_image, caption=f"Sample {i+1}", use_column_width=True)
+        st.image(sample_image, caption=f"Sample {i+1}", use_container_width=True)
 
 
 st.write("Upload an image below to classify it.")
@@ -231,7 +231,7 @@ if uploaded_file is not None:
                 try:
                     # Create segmentation visualization
                     segmentation_result = segmentor.process_image(image, predicted_label)
-                    st.image(segmentation_result, caption="Segmentation Result", use_column_width=True)
+                    st.image(segmentation_result, caption="Segmentation Result", use_container_width=True)
                     
                     if predicted_label != "No Tumor":
                         st.success("🔍 Tumor region highlighted with red outline and semi-transparent fill")
