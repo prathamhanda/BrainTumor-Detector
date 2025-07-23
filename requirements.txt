@@ -1,5 +1,5 @@
-# Core dependencies
-numpy>=1.24.3              # Ensure numpy is installed before torchvision
+# Core dependencies (install in specific order to avoid conflicts)
+numpy==1.24.3
 scipy>=1.10.1
 pandas>=2.0.0
 
@@ -7,9 +7,9 @@ pandas>=2.0.0
 streamlit>=1.26.0
 requests>=2.32.2
 
-# Deep Learning - PyTorch
-torch==2.0.1
-torchvision==0.15.2
+# Deep Learning - PyTorch (Using newer stable versions)
+torch==2.7.1
+torchvision==0.22.1
 
 # Computer Vision and Image Processing
 opencv-python-headless>=4.7.0.72
@@ -18,8 +18,8 @@ Pillow>=9.5.0
 # Visualization
 matplotlib>=3.7.1
 
-# AI/ML Models
-ultralytics==8.0.145  # YOLOv8 for detection
+# AI/ML Models (compatible versions)
+ultralytics>=8.0.145  # YOLOv8 for detection
 segment-anything>=1.0  # SAM2 segmentation model
 
 # Required by dependencies

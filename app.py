@@ -1,10 +1,23 @@
 import os
 import streamlit as st
 from PIL import Image
-import torch
-# Apply PyTorch fix for model loading
-from src.pytorch_fix import allow_model_loading
-from torchvision import transforms
+
+# Ensure numpy is available
+try:
+    import numpy as np
+except ImportError:
+    st.error("NumPy is not available. Please check your requirements.txt")
+    st.stop()
+
+try:
+    import torch
+    # Apply PyTorch fix for model loading
+    from src.pytorch_fix import allow_model_loading
+    from torchvision import transforms
+except ImportError as e:
+    st.error(f"PyTorch imports failed: {e}")
+    st.stop()
+
 from src.model import MyModel, load_model
 from src.utils import predict
 from src.segmentation import TumorSegmentor
@@ -147,8 +160,34 @@ label_dict = {
 
 # process image got from user before passing to the model
 def preprocess_image(image):
-    preprocessed_image = transform(image).unsqueeze(0)
-    return preprocessed_image
+    try:
+        # Ensure image is in RGB format
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+        
+        # Apply transforms with error handling
+        preprocessed_image = transform(image).unsqueeze(0)
+        return preprocessed_image
+    except Exception as e:
+        st.error(f"Error preprocessing image: {e}")
+        # Fallback: manual preprocessing
+        import numpy as np
+        
+        # Manual resize
+        image = image.resize((224, 224))
+        
+        # Convert to numpy array
+        image_array = np.array(image, dtype=np.float32) / 255.0
+        
+        # Normalize manually
+        mean = np.array([0.485, 0.456, 0.406])
+        std = np.array([0.229, 0.224, 0.225])
+        image_array = (image_array - mean) / std
+        
+        # Convert to tensor
+        import torch
+        tensor = torch.from_numpy(image_array.transpose(2, 0, 1)).unsqueeze(0)
+        return tensor
 
 # sample image loader
 @st.cache_data
