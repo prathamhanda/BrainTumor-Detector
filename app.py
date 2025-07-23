@@ -37,7 +37,13 @@ if 'models_downloaded' not in st.session_state:
     st.session_state.models_downloaded = False
 
 # Load the trained model with error handling
-device = "cuda" if torch.cuda.is_available() else "cpu"
+try:
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Using device: {device}")
+except Exception as e:
+    device = "cpu"
+    print(f"Defaulting to CPU due to device error: {e}")
+
 model_path = os.path.join("models", "model_38")
 
 # Check if models exist
@@ -140,14 +146,19 @@ if models_available or st.session_state.models_downloaded:
         print(f"Error details: {traceback.format_exc()}")
         segmentor = None
 
-# Define the transformation
-transform = transforms.Compose(
-    [
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ]
-)
+# Define the transformation with error handling
+try:
+    transform = transforms.Compose(
+        [
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+    )
+    print("✅ Transform pipeline created successfully")
+except Exception as e:
+    st.error(f"Failed to create transform pipeline: {e}")
+    st.stop()
 
 # map labels from int to string
 label_dict = {
@@ -169,25 +180,31 @@ def preprocess_image(image):
         preprocessed_image = transform(image).unsqueeze(0)
         return preprocessed_image
     except Exception as e:
-        st.error(f"Error preprocessing image: {e}")
-        # Fallback: manual preprocessing
-        import numpy as np
+        print(f"Transform failed: {e}")
+        st.warning(f"Using fallback preprocessing due to: {e}")
         
-        # Manual resize
-        image = image.resize((224, 224))
-        
-        # Convert to numpy array
-        image_array = np.array(image, dtype=np.float32) / 255.0
-        
-        # Normalize manually
-        mean = np.array([0.485, 0.456, 0.406])
-        std = np.array([0.229, 0.224, 0.225])
-        image_array = (image_array - mean) / std
-        
-        # Convert to tensor
-        import torch
-        tensor = torch.from_numpy(image_array.transpose(2, 0, 1)).unsqueeze(0)
-        return tensor
+        try:
+            # Fallback: manual preprocessing
+            import numpy as np
+            
+            # Manual resize
+            image = image.resize((224, 224))
+            
+            # Convert to numpy array
+            image_array = np.array(image, dtype=np.float32) / 255.0
+            
+            # Normalize manually
+            mean = np.array([0.485, 0.456, 0.406])
+            std = np.array([0.229, 0.224, 0.225])
+            image_array = (image_array - mean) / std
+            
+            # Convert to tensor
+            import torch
+            tensor = torch.from_numpy(image_array.transpose(2, 0, 1)).unsqueeze(0)
+            return tensor
+        except Exception as fallback_error:
+            st.error(f"Both preprocessing methods failed: {fallback_error}")
+            raise fallback_error
 
 # sample image loader
 @st.cache_data
@@ -270,14 +287,26 @@ if uploaded_file is not None:
         st.write("🎯 **Segmentation**: Precise tumor boundary highlighting")
         
     else:
-        image = Image.open(uploaded_file).convert("RGB")
-        st.image(image, caption="Uploaded Image", width=210)
+        try:
+            image = Image.open(uploaded_file).convert("RGB")
+            st.image(image, caption="Uploaded Image", width=210)
 
-        # Preprocess the image
-        preprocessed_image = preprocess_image(image).to(device)
-        # Make prediction
-        predicted_class = predict(model, preprocessed_image, device)
-        predicted_label = label_dict[predicted_class]
+            # Preprocess the image
+            print("Starting image preprocessing...")
+            preprocessed_image = preprocess_image(image).to(device)
+            print("Image preprocessing completed")
+            
+            # Make prediction
+            print("Starting prediction...")
+            predicted_class = predict(model, preprocessed_image, device)
+            predicted_label = label_dict[predicted_class]
+            print(f"Prediction completed: {predicted_label}")
+        except Exception as e:
+            st.error(f"Error processing image: {e}")
+            print(f"Error in main processing: {e}")
+            import traceback
+            print(f"Full traceback: {traceback.format_exc()}")
+            st.stop()
 
         st.write(
             f"<h1 style='font-size: 48px;'>Prediction: {predicted_label}</h1>",
