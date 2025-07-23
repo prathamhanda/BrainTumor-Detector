@@ -320,32 +320,25 @@ if uploaded_file is not None:
             with st.spinner("Generating segmentation visualization..."):
                 # Let's implement a more robust approach with proper fallback
                 try:
+                    print("Starting segmentation processing...")
+                    
                     # First, let's check if it's a "No Tumor" prediction
                     if predicted_label == "No Tumor":
+                        print("Processing No Tumor case...")
                         # For "No Tumor" cases, just use the basic visualization
                         segmentation_result = segmentor.process_image(image, predicted_label)
                         st.image(segmentation_result, caption="Segmentation Result", use_container_width=True)
                         st.success("✅ No tumor detected - image appears normal")
                     else:
+                        print(f"Processing {predicted_label} case...")
                         # For tumor cases, try the advanced segmentation first
                         st.info("Attempting AI-based tumor segmentation...")
                         
-                        # Check if models are available
-                        if segmentor.yolo_model is None or segmentor.sam_model is None:
-                            st.warning("⚠️ Advanced AI segmentation models not fully available")
-                            st.info("Using fallback segmentation method")
-                            
-                            # Use fallback method
-                            fallback_result = create_fallback_visualization(image, predicted_label)
-                            st.image(fallback_result, caption="Fallback Segmentation Result", use_container_width=True)
-                            
-                        else:
-                            # Try advanced segmentation
-                            segmentation_result = segmentor.process_image(image, predicted_label)
-                            
-                            # Look for failure indicators in the result
-                            if isinstance(segmentation_result, str) and "failed" in segmentation_result.lower():
-                                st.warning("⚠️ Advanced AI segmentation failed")
+                        try:
+                            # Check if models are available
+                            if segmentor.yolo_model is None or segmentor.sam_model is None:
+                                print("Models not available, using fallback...")
+                                st.warning("⚠️ Advanced AI segmentation models not fully available")
                                 st.info("Using fallback segmentation method")
                                 
                                 # Use fallback method
@@ -353,57 +346,48 @@ if uploaded_file is not None:
                                 st.image(fallback_result, caption="Fallback Segmentation Result", use_container_width=True)
                                 
                             else:
-                                # Show the advanced segmentation result
-                                st.image(segmentation_result, caption="AI Segmentation Result", use_container_width=True)
+                                print("Attempting advanced segmentation...")
+                                # Try advanced segmentation
+                                segmentation_result = segmentor.process_image(image, predicted_label)
+                                print("Advanced segmentation completed")
                                 
-                        # Common success message for all tumor cases
+                                # Look for failure indicators in the result
+                                if isinstance(segmentation_result, str) and "failed" in segmentation_result.lower():
+                                    print("Advanced segmentation returned failure, using fallback...")
+                                    st.warning("⚠️ Advanced AI segmentation failed")
+                                    st.info("Using fallback segmentation method")
+                                    
+                                    # Use fallback method
+                                    fallback_result = create_fallback_visualization(image, predicted_label)
+                                    st.image(fallback_result, caption="Fallback Segmentation Result", use_container_width=True)
+                                    
+                                else:
+                                    # Show the advanced segmentation result
+                                    st.image(segmentation_result, caption="AI Segmentation Result", use_container_width=True)
+                                    
+                        except Exception as seg_error:
+                            print(f"Error in advanced segmentation: {seg_error}")
+                            st.warning(f"⚠️ Segmentation error: {seg_error}")
+                            st.info("Using fallback segmentation method")
+                            
+                            # Use fallback method
+                            try:
+                                fallback_result = create_fallback_visualization(image, predicted_label)
+                                st.image(fallback_result, caption="Fallback Segmentation Result", use_container_width=True)
+                            except Exception as fallback_error:
+                                st.error(f"Both segmentation methods failed: {fallback_error}")
+                                print(f"Fallback segmentation also failed: {fallback_error}")
+                                
+                        # Common success message for all tumor cases (only if no errors)
                         st.success("🔍 Tumor region highlighted with red outline and semi-transparent fill")
-                        st.info("💡 The segmentation shows the potential tumor location based on image analysis")
                         
                 except Exception as e:
-                    st.error(f"Error during segmentation: {str(e)}")
-                    st.info("Attempting fallback segmentation...")
-                    
-                    try:
-                        # Try fallback segmentation as last resort
-                        fallback_result = create_fallback_visualization(image, predicted_label)
-                        st.image(fallback_result, caption="Emergency Fallback Segmentation", use_container_width=True)
-                        st.warning("⚠️ Using basic image processing for segmentation (AI models unavailable)")
-                    except Exception as e2:
-                        st.error(f"All segmentation methods failed: {str(e2)}")
-                        st.info("Segmentation unavailable, but classification result is still valid.")
-                        
-                        # Emergency fallback - just show a split view with original image
-                        try:
-                            import matplotlib.pyplot as plt
-                            import numpy as np
-                            import io
-                            from PIL import Image
-                            
-                            # Create a very simple visualization with just the original image
-                            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
-                            img_array = np.array(image)
-                            ax1.imshow(img_array)
-                            ax1.set_title("Original Image")
-                            ax1.axis('off')
-                            
-                            ax2.imshow(img_array)
-                            ax2.set_title(f"No Segmentation Available - {predicted_label}")
-                            ax2.text(0.5, 0.5, "Segmentation failed\nShowing original image", 
-                                    transform=ax2.transAxes, fontsize=12, 
-                                    color='red', ha='center', va='center',
-                                    bbox=dict(boxstyle="round,pad=0.5", facecolor="white", alpha=0.8))
-                            ax2.axis('off')
-                            
-                            plt.tight_layout()
-                            buf = io.BytesIO()
-                            plt.savefig(buf, format='png', bbox_inches='tight', dpi=150)
-                            buf.seek(0)
-                            plt.close()
-                            
-                            emergency_image = Image.open(buf)
-                            st.image(emergency_image, caption="Original Image Only (All Segmentation Failed)", use_container_width=True)
-                        except Exception as final_err:
-                            st.error("Failed to create even a basic image display.")
+                    print(f"Critical error in segmentation section: {e}")
+                    st.error(f"Segmentation visualization failed: {e}")
+                    st.info("Classification result is still valid above.")
+                    import traceback
+                    print(f"Segmentation error traceback: {traceback.format_exc()}")
+            
         else:
-            st.info("🔧 Segmentation models not available. Only classification performed.")
+            print("Segmentor not available, skipping segmentation")
+            st.info("💡 Segmentation models not loaded. Classification result shown above.")
