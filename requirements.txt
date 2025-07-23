@@ -1,7 +1,13 @@
-# Core Streamlit and Web Framework
-streamlit>=1.26.0
+# Core dependencies
+numpy>=1.24.3              # Ensure numpy is installed before torchvision
+scipy>=1.10.1
+pandas>=2.0.0
 
-# Deep Learning - PyTorch (Using an earlier version for better model compatibility)
+# Streamlit and Web
+streamlit>=1.26.0
+requests>=2.32.2
+
+# Deep Learning - PyTorch
 torch==2.0.1
 torchvision==0.15.2
 
@@ -9,23 +15,12 @@ torchvision==0.15.2
 opencv-python-headless>=4.7.0.72
 Pillow>=9.5.0
 
-# Scientific Computing
-numpy>=1.24.0
-scipy>=1.10.1
+# Visualization
 matplotlib>=3.7.1
 
-# Data Processing
-pandas>=2.0.0
-
 # AI/ML Models
-ultralytics==8.0.145  # Fixed version known to work well with PyTorch 2.0.1
-segment-anything>=1.0  # Optional: Only used if available
+ultralytics==8.0.145  # YOLOv8 for detection
+segment-anything>=1.0  # SAM2 segmentation model
 
-# Web and Download
-requests>=2.28.0
-
-# Web and Download
-requests==2.32.2
-
-# Required by dependencies (latest stable)
+# Required by dependencies
 protobuf==5.28.2
