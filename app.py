@@ -261,7 +261,7 @@ cols = st.columns(num_cols)
 for i, (sample_image_file, sample_image) in enumerate(sample_images):
     col_idx = i % num_cols
     with cols[col_idx]:
-        st.image(sample_image, caption=f"Sample {i+1}", use_container_width=True)
+        st.image(sample_image, caption=f"Sample {i+1}", width=200)
 
 
 st.write("Upload an image below to classify it.")
@@ -327,7 +327,7 @@ if uploaded_file is not None:
                         print("Processing No Tumor case...")
                         # For "No Tumor" cases, just use the basic visualization
                         segmentation_result = segmentor.process_image(image, predicted_label)
-                        st.image(segmentation_result, caption="Segmentation Result", use_container_width=True)
+                        st.image(segmentation_result, caption="Segmentation Result", width=600)
                         st.success("✅ No tumor detected - image appears normal")
                     else:
                         print(f"Processing {predicted_label} case...")
@@ -343,7 +343,7 @@ if uploaded_file is not None:
                                 
                                 # Use fallback method
                                 fallback_result = create_fallback_visualization(image, predicted_label)
-                                st.image(fallback_result, caption="Fallback Segmentation Result", use_container_width=True)
+                                st.image(fallback_result, caption="Fallback Segmentation Result", width=600)
                                 
                             else:
                                 print("Attempting advanced segmentation...")
@@ -359,11 +359,11 @@ if uploaded_file is not None:
                                     
                                     # Use fallback method
                                     fallback_result = create_fallback_visualization(image, predicted_label)
-                                    st.image(fallback_result, caption="Fallback Segmentation Result", use_container_width=True)
+                                    st.image(fallback_result, caption="Fallback Segmentation Result", width=600)
                                     
                                 else:
                                     # Show the advanced segmentation result
-                                    st.image(segmentation_result, caption="AI Segmentation Result", use_container_width=True)
+                                    st.image(segmentation_result, caption="AI Segmentation Result", width=600)
                                     
                         except Exception as seg_error:
                             print(f"Error in advanced segmentation: {seg_error}")
@@ -373,7 +373,7 @@ if uploaded_file is not None:
                             # Use fallback method
                             try:
                                 fallback_result = create_fallback_visualization(image, predicted_label)
-                                st.image(fallback_result, caption="Fallback Segmentation Result", use_container_width=True)
+                                st.image(fallback_result, caption="Fallback Segmentation Result", width=600)
                             except Exception as fallback_error:
                                 st.error(f"Both segmentation methods failed: {fallback_error}")
                                 print(f"Fallback segmentation also failed: {fallback_error}")
